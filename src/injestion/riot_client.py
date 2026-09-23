@@ -1,7 +1,17 @@
+import os
+import sys
 import time 
 import requests 
 
+root_path = os.path.abspath(os.path.join(os.getcwd(), '..'))
+if root_path not in sys.path:
+    sys.path.append(root_path)
+
+from src.utils.rate_limiter import RateLimiter
+
 class RiotClient:
+
+    ### NEED TO CHANGE TO PERSONAL API TOKEN WHEN PUBLIC
 
     HEADERS = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
@@ -11,6 +21,12 @@ class RiotClient:
     }
 
     def __init__(self, api_key:str, game_name:str, tag_line:str):
+
+        self.rate_limiter = RateLimiter([
+            (20, 1),
+            (100, 120)
+        ])
+
         self.api_key = api_key
         self.game_name = game_name
         self.tag_line = tag_line
@@ -29,12 +45,16 @@ class RiotClient:
 
 
     def get_json(self, url, params=None):
+
+        self.rate_limiter.acquire()
+
         params = params.copy() if params else {}
 
         params["api_key"] = self.api_key
 
         response = self.session.get(
             url,
+            headers=self.HEADERS,
             params=params, 
             timeout=30
         )
@@ -60,11 +80,19 @@ class RiotClient:
         )
 
         params = {
-            'start_time':start_time, 
-            'end_time':end_time, 
-            'game_type':game_type, 
-            'start_':start_, 
-            'count_':count_
+            'startTime':start_time, 
+            'endTime':end_time, 
+            'gameType':game_type, 
+            'start':start_, 
+            'count':count_
         }
 
         return self.get_json(url=url, params=params)
+
+    def get_match_data(self, match_id):
+        url = (
+            'https://americas.api.riotgames.com/lol/match/v5/matches/'
+            f'{match_id}'
+        )
+
+        return self.get_json(url)
