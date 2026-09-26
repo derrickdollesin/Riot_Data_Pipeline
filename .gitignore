@@ -1,5 +1,46 @@
+# Environment variables / secrets
 .env
+.env.*
+!.env.example
+
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Python cache / compiled files
 __pycache__/
-*.pyc
-tests/
+*.py[cod]
+*$py.class
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# dbt generated files
+riot_analytics/target/
+riot_analytics/logs/
+riot_analytics/dbt_packages/
+
+# Project logs
 logs/
+*.log
+
+# Local data files
+data/
+*.csv
+*.json
+*.parquet
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE / editor
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
