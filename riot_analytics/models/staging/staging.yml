@@ -1,0 +1,53 @@
+version: 2
+
+models:
+  - name: stg_matches
+    description: "One row per Riot match."
+
+    columns:
+      - name: match_id
+        tests:
+          - not_null
+          - unique
+
+      - name: queue_id
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [420, 440]
+
+  - name: stg_participants
+    description: "One row per participant per Riot match."
+
+    columns:
+      - name: match_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_matches')
+                field: match_id
+
+      - name: participant_id
+        tests:
+          - not_null
+
+      - name: puuid
+        tests:
+          - not_null
+
+      - name: team_id
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [100, 200]
+
+      - name: champion_id
+        tests:
+          - not_null
+
+      - name: win
+        tests:
+          - not_null

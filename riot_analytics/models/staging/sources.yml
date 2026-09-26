@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: riot
+    schema: public
+
+    tables:
+      - name: raw_matches
+      - name: tracked_players
+      - name: player_matches

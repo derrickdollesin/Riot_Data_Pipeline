@@ -194,8 +194,8 @@ if __name__ == "__main__":
     # Create the Riot API client for the player being ingested.
     client = RiotClient(
         api_key=API_KEY,
-        game_name="Rocksours",
-        tag_line="556"
+        game_name="coolguy",
+        tag_line="super"
     )
 
     # Create the PostgreSQL database client.

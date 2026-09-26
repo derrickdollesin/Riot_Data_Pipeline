@@ -170,7 +170,7 @@ class RiotClient:
             self,
             start_time=1623801600,  # Beginning of available development data
             end_time=None,         # Defaults to the current Unix timestamp
-            type='ranked',
+            match_type='ranked',
             start_=0,              # Index 0 represents the most recent match
             count_=20              # Maximum number of match IDs to return
     ):
@@ -200,7 +200,7 @@ class RiotClient:
         params = {
             'startTime': start_time,
             'endTime': end_time,
-            'gameType': type,
+            'type': match_type,
             'start': start_,
             'count': count_
         }
