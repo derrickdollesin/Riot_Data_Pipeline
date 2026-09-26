@@ -81,7 +81,6 @@ class RateLimiter:
                 # All configured limits have capacity. Record the request
                 # before returning so subsequent calls account for it.
                 self.request_timestamps.append(current_time)
-                print(current_time)
                 return
             else:
                 # At least one limit is at capacity. Wait for the most

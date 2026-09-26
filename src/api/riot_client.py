@@ -1,16 +1,11 @@
-import os
-import sys
 import time
+import random
+import logging
 import requests
-
-# Add the project root directory to the Python path so modules under src/
-# can be imported when running this file directly or from a notebook.
-root_path = os.path.abspath(os.path.join(os.getcwd(), '..'))
-if root_path not in sys.path:
-    sys.path.append(root_path)
 
 from src.utils.rate_limiter import RateLimiter
 
+logger = logging.getLogger(__name__)
 
 class RiotClient:
     """
@@ -70,46 +65,112 @@ class RiotClient:
         # Store the PUUID for subsequent player-specific API requests.
         self.puuid = account['puuid']
 
-    def get_json(self, url, params=None):
+    def get_json(self, url, params=None, max_retries=3):
         """
         Send a rate-limited GET request and return the JSON response.
+
+        Retries requests that fail due to Riot rate limiting (429)
+        or temporary server errors (5xx).
 
         Args:
             url: Riot API endpoint.
             params: Optional query parameters for the request.
+            max_retries: Maximum number of retry attempts.
 
         Returns:
             Parsed JSON response from the Riot API.
         """
 
-        # Block until the request can be made without exceeding the
-        # configured API rate limits.
-        self.rate_limiter.acquire()
-
-        # Copy the provided parameters to avoid modifying the caller's
-        # original dictionary.
+        # Copy parameters once so retries use the same request parameters.
         params = params.copy() if params else {}
-
-        # Add the Riot API key to the request parameters.
         params["api_key"] = self.api_key
 
-        response = self.session.get(
-            url,
-            headers=self.HEADERS,
-            params=params,
-            timeout=30
-        )
+        for attempt in range(max_retries + 1):
 
-        # Raise an exception for unsuccessful HTTP responses.
-        response.raise_for_status()
+            # Every retry is another API request, so it must also pass
+            # through the local rate limiter.
+            self.rate_limiter.acquire()
 
-        return response.json()
+            try:
+                response = self.session.get(
+                    url,
+                    headers=self.HEADERS,
+                    params=params,
+                    timeout=30
+                )
+
+            except (
+                requests.exceptions.Timeout,
+                requests.exceptions.ConnectionError
+            ) as e:
+                if attempt == max_retries:
+                    raise 
+
+                wait_time = (
+                    (2 ** attempt) + 
+                    random.uniform(a=1, b=9) * 0.1
+                )
+
+                logger.warning(
+                    "Request failed: %s. Retrying in %.1f seconds...",
+                    e,
+                    wait_time
+                )
+
+                time.sleep(wait_time)
+
+                continue
+
+            # Riot rate limit exceeded.
+            if response.status_code == 429:
+
+                if attempt == max_retries:
+                    response.raise_for_status()
+
+                retry_after = response.headers.get("Retry-After")
+
+                if retry_after is not None:
+                    wait_time = float(retry_after)
+                else:
+                    wait_time = 10
+
+                logger.warning(
+                    f"Rate limited by Riot. "
+                    f"Retrying in {wait_time:.1f} seconds..."
+                )
+                time.sleep(wait_time)
+                continue
+
+            # Temporary Riot/server failure.
+            if 500 <= response.status_code < 600:
+
+                if attempt == max_retries:
+                    response.raise_for_status()
+
+                wait_time = (
+                    (2 ** attempt) + 
+                    random.uniform(a=1, b=9) * 0.1
+                )
+
+                logger.warning(
+                    "Server error %s. Retrying in %.1f seconds...",
+                    response.status_code,
+                    wait_time
+                )
+
+                time.sleep(wait_time)
+                continue
+
+            # Don't retry other errors such as 400, 401, 403, etc.
+            response.raise_for_status()
+
+            return response.json()
 
     def get_ranked_match_ids(
             self,
             start_time=1623801600,  # Beginning of available development data
             end_time=None,         # Defaults to the current Unix timestamp
-            game_type='ranked',
+            type='ranked',
             start_=0,              # Index 0 represents the most recent match
             count_=20              # Maximum number of match IDs to return
     ):
@@ -139,7 +200,7 @@ class RiotClient:
         params = {
             'startTime': start_time,
             'endTime': end_time,
-            'gameType': game_type,
+            'gameType': type,
             'start': start_,
             'count': count_
         }
